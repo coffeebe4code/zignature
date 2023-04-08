@@ -49,6 +49,7 @@ void server_init(int port) {
   setopts += setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &tcp_nodelay,
                         sizeof(tcp_keepidle));
 
+  // could look at removing this for cross compatability.
   if (setopts >= 1) {
     perror("Zignature is designed for newer kernels and linux only.");
     perror("Many options were not set correctly on this machine");
@@ -88,13 +89,6 @@ int server_client_read(int cd, char *buffer, size_t left) {
   int rd = read(cd, buffer, left);
   if (rd >= 0) {
     return rd;
-<<<<<<< HEAD
-  } else if (errno != EWOULDBLOCK || errno != EAGAIN || errno != EINTR) {
-    rd = errno;
-    close(cd);
-    return -rd;
-=======
->>>>>>> 117dba1... think the merge was messed up
   }
   return -errno;
 }
@@ -103,13 +97,6 @@ int server_client_write(int cd, const char *buffer, size_t buffer_size) {
   int wd = write(cd, buffer, buffer_size);
   if (wd >= 0) {
     return wd;
-<<<<<<< HEAD
-  } else if (errno != EWOULDBLOCK || errno != EAGAIN || errno != EINTR) {
-    wd = errno;
-    close(cd);
-    return -wd;
-=======
->>>>>>> 117dba1... think the merge was messed up
   }
   return -errno;
 }
