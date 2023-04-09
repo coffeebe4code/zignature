@@ -1,0 +1,21 @@
+name: format
+on: pull_request
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.10.0
+      - run: zig fmt --check src/*.zig
+      - run: zig fmt --check lib/*.zig
+  lint_c:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+      - name: check
+        if: steps.linter.outputs.checks-failed > 0
+        run: exit 1

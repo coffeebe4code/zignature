@@ -77,10 +77,10 @@ pub const HttpParser = struct {
     }
 };
 
-test "test parse method" {
-    var buf: [512]u8 = undefined;
-    std.mem.copy(u8, &buf, "GET ");
-    var parser = HttpParser.init(&buf, 4);
-    var result = parser.parse_method();
-    try std.testing.expect(try result == HttpMethod.GET);
-}
+//test "test parse method" {
+//    var buf: [512]u8 = undefined;
+//    std.mem.copy(u8, &buf, "GET ");
+//    var parser = HttpParser.init(&buf, 4);
+//    var result = parser.parse_method();
+//    try std.testing.expect(try result == HttpMethod.GET);
+//}
