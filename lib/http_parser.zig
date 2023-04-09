@@ -77,10 +77,26 @@ pub const HttpParser = struct {
     }
 };
 
-//test "test parse method" {
-//    var buf: [512]u8 = undefined;
-//    std.mem.copy(u8, &buf, "GET ");
-//    var parser = HttpParser.init(&buf, 4);
-//    var result = parser.parse_method();
-//    try std.testing.expect(try result == HttpMethod.GET);
-//}
+test "test parse get" {
+    var buf: [512]u8 = undefined;
+    std.mem.copy(u8, &buf, "GET ");
+    var parser = HttpParser.init(&buf, 4);
+    var result = try parser.parse_method();
+    try std.testing.expect(result == HttpMethod.GET);
+}
+
+test "test parse options" {
+    var buf: [512]u8 = undefined;
+    std.mem.copy(u8, &buf, "OPTIONS");
+    var parser = HttpParser.init(&buf, 7);
+    var result = try parser.parse_method();
+    try std.testing.expect(result == HttpMethod.OPTIONS);
+}
+
+test "test parse head" {
+    var buf: [512]u8 = undefined;
+    std.mem.copy(u8, &buf, "HEAD ");
+    var parser = HttpParser.init(&buf, 5);
+    var result = try parser.parse_method();
+    try std.testing.expect(result == HttpMethod.HEAD);
+}
