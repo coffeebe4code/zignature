@@ -1,7 +1,7 @@
-name: unit tests
+name: test
 on: pull_request
 jobs:
-  unit_tests:
+  test:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
