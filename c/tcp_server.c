@@ -16,6 +16,7 @@
 static struct sockaddr_in sa;
 static int socket_fd;
 
+// TODO:: leave this open so flags can be set dynamically for use case.
 void server_init(int port) {
   socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -29,6 +30,7 @@ void server_init(int port) {
     perror("cannot get flags on socket");
     exit(EXIT_FAILURE);
   }
+  // TODO:: review for flag 15 value.
   fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK | 15 | SO_KEEPALIVE);
 
   if (socket_fd == -1) {
@@ -36,6 +38,7 @@ void server_init(int port) {
     exit(EXIT_FAILURE);
   }
 
+  // TODO:: leave this open for cross compatability
   int tcp_fastopen = 1;
   int tcp_keepidle = 5;
   int tcp_quickack = 1;
@@ -49,7 +52,6 @@ void server_init(int port) {
   setopts += setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &tcp_nodelay,
                         sizeof(tcp_keepidle));
 
-  // could look at removing this for cross compatability.
   if (setopts >= 1) {
     perror("Zignature is designed for newer kernels and linux only.");
     perror("Many options were not set correctly on this machine");
