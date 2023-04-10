@@ -10,15 +10,23 @@ const delete = "DELE";
 const options = "OPTI";
 const trace = "TRAC";
 const head = "HEAD";
+const spaces64 = "        ";
 
 const ParserError = error{
     InvalidMethod,
     InvalidHttpVersion,
+    InvalidHeadersTooLarge,
+    InvalidPreTooLarge,
+    InvalidBodyTooLarge,
     InvalidIncomplete,
 };
 
 pub const HttpParser = struct {
     buffer: *[config.max_total_size]u8,
+    method: HttpMethod,
+    route: []const u8,
+    headers: []const u8,
+    body: []const u8,
     current: usize,
     len: usize,
     pub fn init(buffer: *[config.max_total_size]u8, len: usize) HttpParser {
@@ -31,7 +39,11 @@ pub const HttpParser = struct {
     pub fn update_len(self: *HttpParser, additional: usize) void {
         self.len += additional;
     }
-    pub fn parse_method(self: *HttpParser) ParserError!HttpMethod {
+    pub fn parse_boundary(self: *HttpParser) ParserError!void {
+        var result = try self.parse_method();
+        if (result != null) {}
+    }
+    pub fn parse_method(self: *HttpParser) ParserError!?HttpMethod {
         if (self.len >= 4) {
             const to_cmp: @Vector(4, u8) = self.buffer[0..4].*;
             var method: @Vector(4, u8) = get[0..4].*;
@@ -73,7 +85,17 @@ pub const HttpParser = struct {
             }
             return ParserError.InvalidMethod;
         }
-        return ParserError.InvalidIncomplete;
+        return null;
+    }
+    pub fn parse_route(self: *HttpParser) ParserError!?void {
+        if (self.len - self.current >= 8) {
+            const to_cmp: @Vector(8, u8) = self.buffer[0..8].*;
+            var mask: @Vector(8, u8) = spaces64[0..8].*;
+            if (@reduce(.And, to_cmp & mask)) {
+                // space found
+                return HttpMethod.GET;
+            }
+        }
     }
 };
 
