@@ -10,7 +10,8 @@ const delete = "DELE";
 const options = "OPTI";
 const trace = "TRAC";
 const head = "HEAD";
-const spaces64 = "        ";
+const spaces64: []const u8 = "        ";
+const crlf64: []const u8 = "\r\n\r\n\r\n\r\n";
 
 const ParserError = error{
     InvalidMethod,
@@ -54,6 +55,7 @@ pub const HttpParser = struct {
         var result = try self.parse_method();
         self.method = result;
         try self.parse_route();
+        try self.parse_http();
     }
     //TODO:: add intrinsics and alignment  changes later.
     pub fn parse_method(self: *HttpParser) ParserError!HttpMethod {
@@ -113,8 +115,8 @@ pub const HttpParser = struct {
                 const cmp_int = @bitCast(u8, to_cmp == mask);
                 const idx = @ctz(cmp_int);
                 if (idx < 8) {
-                    self.route_end = self.current + idx + route_idx;
-                    self.current += self.route_end + 1;
+                    self.route_end = idx + route_idx - 1;
+                    self.current += self.route_end + 2;
                     return;
                 }
                 self.current += 8;
@@ -122,8 +124,8 @@ pub const HttpParser = struct {
             } else if (run_len > 0) {
                 const idx = std.mem.indexOf(u8, self.buffer[self.current .. self.current + run_len], spaces64[0..1]);
                 if (idx != null) {
-                    self.route_end = self.current + idx.? + route_idx;
-                    self.current += self.route_end + 1;
+                    self.route_end = idx.? + route_idx - 1;
+                    self.current += self.route_end + 2;
                     return;
                 }
                 self.current += run_len;
@@ -148,26 +150,26 @@ pub const HttpParser = struct {
         while (true) {
             const run_len = self.len - self.current;
             if (run_len >= 8) {
-                const to_cmp: @Vector(8, u8) = self.buffer[self.current..][0..8].*;
-                var mask: @Vector(8, u8) = spaces64[0..8].*;
-                const cmp_int = @bitCast(u8, to_cmp == mask);
+                const to_cmp: @Vector(2, u32) = @bitCast([2]u32, self.buffer[self.current..][0..8].*);
+                var mask: @Vector(2, u32) = @bitCast([2]u32, crlf64[0..8].*);
+                const cmp_int = @bitCast(u32, to_cmp == mask);
                 const idx = @ctz(cmp_int);
-                if (idx < 8) {
-                    self.route_end = self.current + idx + route_idx;
-                    self.current += self.route_end + 1;
+                if (idx < 2) {
+                    self.header_end = self.current + idx + header_idx;
+                    self.current += self.header_end + 1;
                     return;
                 }
                 self.current += 8;
-                route_idx += 8;
-            } else if (run_len > 0) {
-                const idx = std.mem.indexOf(u8, self.buffer[self.current .. self.current + run_len], spaces64[0..1]);
+                header_idx += 8;
+            } else if (run_len >= 4) {
+                const idx = std.mem.indexOf(u8, self.buffer[self.current .. self.current + run_len], crlf64[0..4]);
                 if (idx != null) {
-                    self.route_end = self.current + idx.? + route_idx;
-                    self.current += self.route_end + 1;
+                    self.header_end = self.current + idx.? + header_idx;
+                    self.current += self.header_end + 1;
                     return;
                 }
                 self.current += run_len;
-                route_idx += run_len;
+                header_idx += run_len;
             }
         }
     }
@@ -177,24 +179,33 @@ test "test parse route 7" {
     var buf: [config.max_total_size]u8 = undefined;
     std.mem.copy(u8, &buf, "/route ");
     var parser = HttpParser.init(&buf, 7);
-    var result = try parser.parse_route();
-    try std.testing.expect(result == 6);
+    try parser.parse_route();
+    try std.testing.expect(parser.route_end == 5);
+}
+
+test "test headers" {
+    var buf: [config.max_total_size]u8 = undefined;
+    std.mem.copy(u8, &buf, "header:");
+    var parser = HttpParser.init(&buf, 22);
+    try parser.parse_header_seek_end();
+    try std.testing.expect(parser.header_start == 0);
+    try std.testing.expect(parser.header_end == 22);
 }
 
 test "test parse route 20" {
     var buf: [config.max_total_size]u8 = undefined;
     std.mem.copy(u8, &buf, "/route/that/is/long ");
     var parser = HttpParser.init(&buf, 20);
-    var result = try parser.parse_route();
-    try std.testing.expect(result == 19);
+    try parser.parse_route();
+    try std.testing.expect(parser.route_end == 18);
 }
 
 test "test parse route 8" {
     var buf: [config.max_total_size]u8 = undefined;
     std.mem.copy(u8, &buf, "/route h");
     var parser = HttpParser.init(&buf, 8);
-    var result = try parser.parse_route();
-    try std.testing.expect(result == 6);
+    try parser.parse_route();
+    try std.testing.expect(parser.route_end == 5);
 }
 
 test "test parse get" {
