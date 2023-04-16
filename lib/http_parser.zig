@@ -1,4 +1,5 @@
 const std = @import("std");
+const print = @import("std").debug.print;
 const config = @import("http_config");
 const HttpMethod = @import("http").HttpMethod;
 
@@ -146,11 +147,15 @@ pub const HttpParser = struct {
     //TODO:: add intrinsics and alignment changes later.
     pub fn parse_header_seek_end(self: *HttpParser) ParserError!void {
         var header_idx: usize = 0;
+        print("1\n", .{});
         self.header_start = self.current;
         while (true) {
             const run_len = self.len - self.current;
+            print("2\n", .{});
             if (run_len >= 8) {
+                print("3\n", .{});
                 const to_cmp: @Vector(2, u32) = @bitCast([2]u32, self.buffer[self.current..][0..8].*);
+                print("4\n", .{});
                 var mask: @Vector(2, u32) = @bitCast([2]u32, crlf64[0..8].*);
                 const cmp_int = @bitCast(u32, to_cmp == mask);
                 const idx = @ctz(cmp_int);
@@ -162,8 +167,10 @@ pub const HttpParser = struct {
                 self.current += 8;
                 header_idx += 8;
             } else if (run_len >= 4) {
+                print("a\n", .{});
                 const idx = std.mem.indexOf(u8, self.buffer[self.current .. self.current + run_len], crlf64[0..4]);
                 if (idx != null) {
+                    print("b\n", .{});
                     self.header_end = self.current + idx.? + header_idx;
                     self.current += self.header_end + 1;
                     return;
@@ -185,11 +192,11 @@ test "test parse route 7" {
 
 test "test headers" {
     var buf: [config.max_total_size]u8 = undefined;
-    std.mem.copy(u8, &buf, "header:");
-    var parser = HttpParser.init(&buf, 22);
+    std.mem.copy(u8, &buf, "header:abcde\r\n\r\n");
+    var parser = HttpParser.init(&buf, 16);
     try parser.parse_header_seek_end();
     try std.testing.expect(parser.header_start == 0);
-    try std.testing.expect(parser.header_end == 22);
+    try std.testing.expect(parser.header_end == 15);
 }
 
 test "test parse route 20" {
