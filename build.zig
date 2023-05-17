@@ -5,34 +5,24 @@ const c_opts = [_][]const u8{ "-std=c11", "-Wall", "-Werror", "-Wextra" };
 
 const libs = struct {
     const tcp_server = .{
-        .name = "tcp_server",
-        .source = .{ .path = "lib/tcp_server.zig" },
-        .dependencies = &.{tcp_config},
+        .source_file = .{ .path = "lib/tcp_server.zig" },
+        .dependencies = undefined,
     };
     const tcp_config = .{
-        .name = "tcp_config",
-        .source = .{ .path = "lib/tcp_config.zig" },
-        .dependencies = &.{},
+        .source_file = .{ .path = "lib/tcp_config.zig" },
+        .dependencies = undefined,
     };
     const http_config = .{
-        .name = "http_config",
-        .source = .{ .path = "lib/http_config.zig" },
-        .dependencies = &.{},
-    };
-    const config = .{
-        .name = "config",
-        .source = .{ .path = "lib/config.zig" },
-        .dependencies = &.{},
+        .source_file = .{ .path = "lib/http_config.zig" },
+        .dependencies = undefined,
     };
     const http = .{
-        .name = "http",
-        .source = .{ .path = "lib/http.zig" },
-        .dependencies = &.{},
+        .source_file = .{ .path = "lib/http.zig" },
+        .dependencies = undefined,
     };
     const http_parser = .{
-        .name = "http_parser",
-        .source = .{ .path = "lib/http_parser.zig" },
-        .dependencies = &.{ http, config, http_config },
+        .source_file = .{ .path = "lib/http_parser.zig" },
+        .dependencies = undefined,
     };
 };
 
@@ -52,13 +42,47 @@ fn buildPlaintext(b: *std.build.Builder) void {
 
     const tests = b.addTest(.{
         .name = "tests",
-        .root_source_file = libs.http_parser.source,
+        .root_source_file = .{ .path = "src/lib" },
         .target = target,
         .optimize = m,
     });
-    tests.addModule(libs.tcp_config.name, @as(*std.Build.Module, &libs.tcp_config));
-    tests.addModule(libs.http.name, libs.http);
-    tests.addModule(libs.http_config.name, libs.http_config);
+
+    // libs
+    const tcp_config = b.createModule(.{
+        .source_file = .{ .path = "lib/tcp_config.zig" },
+        .dependencies = &.{},
+    });
+    const tcp_dep = b.dependency("tcp_dep", .{});
+    _ = tcp_dep;
+
+    const tcp_server = .{
+        .source_file = .{ .path = "lib/tcp_server.zig" },
+        .dependencies = &.{
+            tcp_config,
+        },
+    };
+    const http_config = b.createModule(.{
+        .source_file = .{ .path = "lib/http_config.zig" },
+        .dependencies = undefined,
+    });
+    const http = b.createModule(.{
+        .source_file = .{ .path = "lib/http.zig" },
+        .dependencies = &.{},
+    });
+    const http_parser = b.createModule(.{
+        .source_file = .{ .path = "lib/http_parser.zig" },
+        .dependencies = &.{
+            .{ .name = "http_config", .module = http_config },
+            .{ .name = "http", .module = http },
+        },
+    });
+
+    // tests
+    tests.addModule("tcp_config", tcp_config);
+    tests.addModule("http", http);
+    tests.addModule("http_config", http_config);
+    tests.addModule("tcp_server", tcp_server);
+    tests.addModule("httpparser", http_parser);
     //tests.setTarget(target);
     //tests.setBuildMode(m);
 
@@ -68,11 +92,11 @@ fn buildPlaintext(b: *std.build.Builder) void {
     //exe.setTarget(target);
     //exe.setBuildMode(m);
     exe.addLibraryPath("lib");
-    exe.addModule(libs.tcp_config);
-    exe.addModule(libs.http_config);
-    exe.addModule(libs.tcp_server);
-    exe.addModule(libs.http);
-    exe.addModule(libs.http_parser);
+    exe.addModule("tcp_config", tcp_config);
+    exe.addModule("http", http);
+    exe.addModule("http_config", http_config);
+    exe.addModule("tcp_server", tcp_server);
+    exe.addModule("httpparser", http_parser);
 
     exe.addIncludePath("c");
     exe.linkLibC();
